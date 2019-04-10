@@ -9,9 +9,9 @@ The original project was forked from https://github.com/yecol/exp-dmine
 - Graph partitioning lib, Metis. http://glaros.dtc.umn.edu/gkhome/views/metis  
 
 ### Dataset Introdection  
-./dataset/liantong_1/* is a small graph made by JunJie Wang and transfered by KeXiang Wang with tools in https://github.com/KeXiangWang/graph_builder  
-./dataset/pokec/* is a small graph made by JunJie Wang and transfered by JunJie Wang.  
-./dataset/pokec_0/* is a experimental graph provided by the original project.  
+- ./dataset/liantong_1/* is a small graph made by JunJie Wang and transfered by KeXiang Wang with tools in https://github.com/KeXiangWang/graph_builder  
+- ./dataset/pokec/* is a small graph made by JunJie Wang and transfered by JunJie Wang.  
+- ./dataset/pokec_0/* is a experimental graph provided by the original project.  
 
 ### Instruction
 - Check **./run.sh** to know about how to run the engine and what environmant are needed. Besides the file **Maven** is needed.
