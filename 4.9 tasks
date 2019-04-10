@@ -1,0 +1,8 @@
+* 修改edge的attribute的设置方法
+展开属性用不同的label // 双份
+跑大图
+生成一个不包含attribute的图 // without opp_head like
+pattern拓展算法 // expand()
+	尝试打开parentExpend
+	彻底改
+match检验 // 审查,完成TODO
