@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DefaultWeightedEdge;
 
 import ed.inf.discovery.auxiliary.SimpleNode;
 import ed.inf.grape.graph.Partition;
@@ -47,7 +48,7 @@ public class DiscoveryTask {
 
         Pattern initPattern = new Pattern(this.partitionID);
 
-        initPattern.initialXYEdge(KV.QUERY_X_LABEL, KV.QUERY_Y_LABEL);
+        initPattern.initialXYEdge(KV.QUERY_X_LABEL, KV.QUERY_Y_LABEL, KV.EDGE_X_Y_ATTRIBUTE);
 
         partition.initWithPattern(initPattern);
 
@@ -55,7 +56,6 @@ public class DiscoveryTask {
 
         log.debug(partition.getCountInfo());
         log.debug(Dev.currentRuntimeState());
-        log.info("use expend");
         List<Pattern> expandedPatterns = this.expand(partition, initPattern);
         log.debug("expanded " + expandedPatterns.size() + " patterns.");
         // TODO: automorphism check of the expendedPatterns.
@@ -64,7 +64,7 @@ public class DiscoveryTask {
         for (Pattern p : expandedPatterns) {
 
             log.debug("pID = " + p.getPatternID() + " origin = " + p.getOriginID()
-                    + ", beforeMatchR =  " + p.getXCandidates().toArray().length);
+                    + ", before MatchR X.size() =  " + p.getXCandidates().toArray().length);
             // DONE use output as condition
             int matchXCount = partition.matchR(p);
             int matchXNotYCount = partition.matchQ(p);
@@ -102,18 +102,18 @@ public class DiscoveryTask {
         int i = 0;
         for (Pattern baseMessage : messages) {
             i++;
-            log.debug("current in step " + this.superstep + " expanded " + i + "/"
+            log.debug("Currently in step " + this.superstep + " expanded " + i + "/"
                     + messages.size());
 
             baseMessage.resetAsLocalPattern(partition);
 
             List<Pattern> expandedPatterns = this.expand(partition, baseMessage);
-            log.debug("expanded " + expandedPatterns.size() + " patterns.");
+            log.debug("Expanded " + expandedPatterns.size() + " patterns totally.");
 
             long start = System.currentTimeMillis();
             for (Pattern p : expandedPatterns) {
 
-                log.debug("know about every pattern: "+p.getQ().edgeSet());
+                log.debug("know about every pattern: " + p.getQ().edgeSet());
 
                 log.debug("pID = " + p.getPatternID() + " origin = " + p.getOriginID()
                         + ", beforeXCan =  " + p.getXCandidates().toArray().length + ",XnotYCan= "
@@ -159,13 +159,12 @@ public class DiscoveryTask {
         List<Pattern> expandedWithPersonNode = new LinkedList<Pattern>();
 
         int radiu = this.superstep;
-
+        log.info("This is " + radiu + "th superstep");
         if (radiu == KV.PARAMETER_B) {
-            log.info("radiu reaches limit, expend stoped.");
+            log.info("radiu reaches limit, expend stopped.");
             return expandedPattern;
         }
         log.info("origin pattern:" + origin);
-        log.info("jump to expend++");
 
         /** 2019.3.31 commented by kexiang **/
 //		for (SimpleNode n : origin.getQ().vertexSet()) {
@@ -228,11 +227,11 @@ public class DiscoveryTask {
 //		}
 
         /** 2019.3.31 added by kexiang **/
-        for(Pattern pattern : expandedPattern) {
+        for (Pattern pattern : expandedPattern) {
             log.info("0-newGensPatterns check 1-1" + pattern.getQ().edgeSet());
         }
         expandedWithPersonNode.add(origin);
-        for(Pattern pattern : expandedPattern) {
+        for (Pattern pattern : expandedPattern) {
             log.info("1-newGensPatterns check 1-1" + pattern.getQ().edgeSet());
         }
         // if (radiu == 0) {
@@ -241,13 +240,18 @@ public class DiscoveryTask {
         // int nradius = radiu +1;
 
         for (Pattern p : expandedWithPersonNode) {
-            log.info("expandedWithPersonNode ----------------------------" + p.toString() + " in set " + p.getQ().vertexSet());
+            log.info("expandedWithPersonNode ----------------------------\n" + p.toString() + " \nin set " + p.getQ().vertexSet());
             Map<Integer, Integer> attrs = new HashMap<Integer, Integer>();
 
-            for (SimpleNode n : p.getQ().vertexSet()) {
-                if (n.attribute != KV.PERSON_LABEL) {
-                    attrs.put(n.attribute, n.nodeID);
-                }
+//            for (SimpleNode n : p.getQ().vertexSet()) {
+////                if (n.attribute != KV.PERSON_LABEL) { // FIXME  to simplify delete the condition
+//                attrs.put(n.attribute, n.nodeID);
+////                }
+//            }
+            for (DefaultWeightedEdge edge : p.getQ().edgeSet()) {
+//                if (n.attribute != KV.PERSON_LABEL) { // FIXME  to simplify delete the condition
+                attrs.put((int) p.getQ().getEdgeWeight(edge), p.getQ().getEdgeSource(edge).nodeID);
+//                }
             }
             log.info("attrs: " + attrs);
 
@@ -259,14 +263,14 @@ public class DiscoveryTask {
 
                     for (int attr : partition.getFreqEdgeLabels()) {
                         if (attrs.keySet().contains(attr)) {
-                            log.info("match attr" + attr);
-                            Pattern np = new Pattern(this.partitionID, p, true);
-                            np.expendEdgeFromNodeToNode(n.nodeID, attrs.get(attr));
-                            log.info("what's that? " + n.nodeID + attrs.get(attr));
-                            log.info(" after match attr FROM Node To Node " + np.getQ().vertexSet());
-                            newGensPatterns.add(np);
+//                            log.info("match attr " + attr + " expand from "+n.nodeID+ " to "+ attrs.get(attr));
+//                            Pattern np = new Pattern(this.partitionID, p, true);
+//                            np.expendEdgeFromNodeToNode(n.nodeID, attrs.get(attr));
+//                            log.info("what's that? " + n.nodeID + attrs.get(attr));
+//                            log.info(" after match attr FROM Node To Node " + np.getQ().vertexSet());
+//                            newGensPatterns.add(np);
                         } else {
-                            log.info("not match attr" + attr + " ???? "+ p.getQ().vertexSet());
+                            log.info("not match attr(FreqEdgeLabel) " + attr);
                             Pattern np = new Pattern(this.partitionID, p, true);
 //                            log.info("after not match attr" + attr + " ???? "+ np.getQ().vertexSet());
                             np.expendAttrFromFixedNodeWithAttr(n.nodeID, attr);
@@ -284,13 +288,12 @@ public class DiscoveryTask {
                         }
                     }
                     expandedPattern.addAll(newGensPatterns);
-                    for(Pattern pattern : expandedPattern) {
-                        log.info("newGensPatterns check 1-1" + pattern.getQ().edgeSet());
-                    }
+//                    for (Pattern pattern : expandedPattern) {
+//                        log.info("newGensPatterns:\n" + pattern.getQ().edgeSet());
+//                    }
                 }
             }
         }
-        log.info("jump out expend");
         return expandedPattern;
     }
 
@@ -310,7 +313,7 @@ public class DiscoveryTask {
     public static void main(String[] args) {
 
         Pattern p = new Pattern(0);
-        p.initialXYEdge(1, 2430004);
+        p.initialXYEdge(1, 2430004, 2400000);
         p.expendChildFromFixedNodeWithAttr(0, 1);
         p.expendChildFromFixedNodeWithAttr(0, 1);
         // p.expend1Node1EdgeAsChildFromFixedNode(0, 2430010);
@@ -318,7 +321,6 @@ public class DiscoveryTask {
         System.out.println(p.toString());
 
         KV.PARAMETER_B = 4;
-        log.info("FROM  DiscoveryTask !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         Partition partition = IO.loadPartitionFromVEFile(0, "dataset/graph-0");
         // Partition partition = IO.loadPartitionFromVEFile(0, "dataset/test");
         partition.initWithPattern(p);
@@ -335,7 +337,7 @@ public class DiscoveryTask {
             for (SimpleNode _v : pattern.getQ().vertexSet()) {
                 StringBuffer _s = new StringBuffer();
                 _s.append(_v.nodeID).append("\t").append(_v.attribute);
-                for (DefaultEdge _e : pattern.getQ().outgoingEdgesOf(_v)) {
+                for (DefaultWeightedEdge _e : pattern.getQ().outgoingEdgesOf(_v)) {
                     _s.append("\t").append(pattern.getQ().getEdgeTarget(_e).nodeID);
                 }
                 System.out.println(_s);

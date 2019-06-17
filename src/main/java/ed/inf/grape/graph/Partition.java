@@ -12,6 +12,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DefaultWeightedEdge;
 import org.roaringbitmap.RoaringBitmap;
 
 import ed.inf.discovery.Pattern;
@@ -90,7 +91,7 @@ public class Partition extends Graph implements Serializable {
     public void initWithPattern(Pattern pattern) {
 
         /** count X, Y, XY, notY */
-		log.info(this.GetNodeSet().values());
+//        log.info(this.GetNodeSet().values());
         for (Node node : this.GetNodeSet().values()) {
             if (node.GetAttribute() == pattern.getX().attribute) {
                 if (KV.ENABLE_FILTERX) {
@@ -117,12 +118,26 @@ public class Partition extends Graph implements Serializable {
             boolean hasXY = false;
 
             for (Node childNode : this.GetChildren(this.FindNode(nodeID))) {
-                if (Compute.getEdgeType(childNode.GetAttribute()) == Compute.getEdgeType(pattern
-                        .getY().attribute)) {
-                    if(printDetail) log.info("same edge type +++++++++++++  " + childNode.GetAttribute() + " : " + pattern.getY().attribute);
+//                log.info(nodeID + " has children: " + childNode.GetAttribute() + " weight" + getEdgeWeight(FindNode(nodeID), childNode));
+//                if (Compute.getEdgeType(childNode.GetAttribute()) == Compute.getEdgeType(pattern
+//                        .getY().attribute)) {
+//                    log.info(nodeID + " has children: " + childNode.GetAttribute() + " id: " + childNode.GetID());
+//
+////                    if (printDetail)
+////                        log.info("same edge type +++++++++++++  " + childNode.GetAttribute() + " : " + pattern.getY().attribute);
+//                    hasXYEdgeType = true;
+//                    if (childNode.GetAttribute() == pattern.getY().attribute) {
+////                        if (printDetail) log.info("hasXY +++++++++++++");
+//                        XY.add(nodeID);
+//                        hasXY = true;
+//                        YCount++;
+//                    } else {
+//                        notYCount++;
+//                    }
+//                }// FIXME add by wkx in 19.6.8
+                if (childNode.GetAttribute() == pattern.getY().attribute) {
                     hasXYEdgeType = true;
-                    if (childNode.GetAttribute() == pattern.getY().attribute) {
-                        if(printDetail) log.info("hasXY +++++++++++++");
+                    if ((Integer) getEdgeWeight(FindNode(nodeID), childNode) == KV.EDGE_X_Y_ATTRIBUTE) {
                         XY.add(nodeID);
                         hasXY = true;
                         YCount++;
@@ -132,7 +147,7 @@ public class Partition extends Graph implements Serializable {
                 }
             }
 
-            if (hasXYEdgeType == true && hasXY == false) {
+            if (hasXYEdgeType && !hasXY) {
                 XNotY.add(nodeID);
             }
         }
@@ -142,8 +157,8 @@ public class Partition extends Graph implements Serializable {
         pattern.setSupportUB(XY.toArray().length);
         pattern.setYCount(YCount);
         pattern.setNotYCount(notYCount);
-        if(printDetail) log.info("initWithPattern  " + pattern.getXCandidates().toArray().length);
-        if(printDetail) log.info("XY: " + pattern.getXCandidates() + " XNotY "
+        if (printDetail) log.info("initWithPattern  " + pattern.getXCandidates().toArray().length);
+        if (printDetail) log.info("XY: " + pattern.getXCandidates() + " XNotY "
                 + pattern.getXNotYCandidates() + " Y: " + pattern.getY() + " notY " + pattern.getNotYCount());
     }
 
@@ -190,121 +205,89 @@ public class Partition extends Graph implements Serializable {
     }
 
     public int matchR(Pattern pattern) {
-
-        // System.out.println(pattern);
-
         /** using x->y */
-
         // FIXME: not sure works correct.
-
         long start = System.currentTimeMillis();
-
         RoaringBitmap xset = new RoaringBitmap();
-
         /** Map storing edges to be mapping. HopFromX -> Edges */
-        HashMap<Integer, HashSet<DefaultEdge>> oMappingEdges = new HashMap<Integer, HashSet<DefaultEdge>>();
+        HashMap<Integer, HashSet<DefaultWeightedEdge>> oMappingEdges = new HashMap<Integer, HashSet<DefaultWeightedEdge>>();
 
-        for (DefaultEdge e : pattern.getQ().edgeSet()) {
+        for (DefaultWeightedEdge e : pattern.getQ().edgeSet()) {
             int hop = pattern.getQ().getEdgeTarget(e).hop;
-            if(printDetail) log.debug("DefaultEdge e - " + e + "  hop: " + hop);
+//            log.debug("DefaultEdge e - " + e + "  hop: " + hop);
             if (!oMappingEdges.containsKey(hop)) {
-                oMappingEdges.put(hop, new HashSet<DefaultEdge>());
+                oMappingEdges.put(hop, new HashSet<DefaultWeightedEdge>());
             }
             oMappingEdges.get(hop).add(e);
         }
-        if(printDetail) log.debug("match-debug - " + oMappingEdges);
-        if(printDetail) log.debug("matching pattern: " + pattern + "\n");
+        log.debug("oMappingEdges - \n" + oMappingEdges);
+        log.debug("matching pattern: \n" + pattern);
         for (int x : pattern.getXCandidates().toArray()) {
-
-            if(printDetail) log.debug("match-debug " + "current x= " + x);
+//            log.debug("current dealing x= " + x);
 //             HashMap<Integer, HashSet<DefaultEdge>> mappingEdges =
 //             SerializationUtils
 //             .clone(oMappingEdges);
-
             boolean satisfy = true;
-
             /** Map storing edges to be mapping. PatternNodeID -> GraphNodeID **/
             HashSet<Integer> lastMatches = new HashSet<Integer>();
             lastMatches.add(x);
             boolean startForFlag = false; // DONE ADD a FLAG FOR JUDGE WHETHER it HAD GOTTEN IN FOR LOOP by wkx at 4/7 15:50
             for (int i = 1; i <= KV.PARAMETER_B; i++) {
-                if(printDetail) log.info("into for (int i = 1; i <= KV.PARAMETER_B; i++)");
-                // System.out.println("hop = " + i);
                 if (!oMappingEdges.containsKey(i)) {
-                    if(printDetail) log.info("but !oMappingEdges.containsKey(i) and break!");
-                    // System.out.println("checked all");
-                    if(!startForFlag){ // TODO check whether reliable by wkx at 19/4/9
+                    if (!startForFlag) { // TODO check whether reliable by wkx at 19/4/9
                         satisfy = false;
                     }
                     break;
                 }
-                startForFlag =true;
+                startForFlag = true;
 
                 HashSet<Integer> currentMatches = new HashSet<Integer>();
-                for (DefaultEdge e : oMappingEdges.get(i)) {
+                for (DefaultWeightedEdge e : oMappingEdges.get(i)) {
                     boolean edgeSatisfy = false;
-//                    log.debug("DefaultEdge e : oMappingEdges.get(i): " + e);
+//                    log.debug("Matching edge: " + e);
                     for (int lmatch : lastMatches) {
-//                        log.debug("int lmatch : lastMatches: " + lmatch);
-//                        log.debug("compare : " + this.FindNode(lmatch).GetAttribute() + "  " + pattern.getQ().getEdgeSource(e).attribute);
                         if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
-
                             for (Node n : this.GetChildren(this.FindNode(lmatch))) {
-//                                log.debug("Node n : this.GetChildren(this.FindNode(lmatch)): " + n.GetID());
-//                                log.debug("compare attr" + n.GetAttribute() + "  " + pattern.getQ().getEdgeTarget(e).attribute);
-                                if (n.GetAttribute() == pattern.getQ().getEdgeTarget(e).attribute) {
-//                                    log.debug("n.GetAttribute() == pattern.getQ().getEdgeTarget(e).attribute");
-                                    System.out.println(" "); // added only for avoid ugly underlines
+                                if (((Integer) getEdgeWeight(this.FindNode(lmatch), n)) == (int) pattern.getQ().getEdgeWeight(e)) {
+//                                    log.debug("Match successfully match nodeID:" + n.GetID() + " attr: "
+//                                            + n.GetAttribute() + " \nweight:" + getEdgeWeight(this.FindNode(lmatch), n)
+//                                            + " matched weight:" + pattern.getQ().getEdgeWeight(e));
                                     currentMatches.add(n.GetID());
                                     edgeSatisfy = true;
                                 }
                             }
                         }
                     }
-                    if(printDetail) log.info("edgeSatisfy + " + edgeSatisfy);
                     if (!edgeSatisfy) {
                         satisfy = false;
                     }
                 }
-                if(printDetail) log.info("Satisfy + " + satisfy);
                 if (!satisfy) {
                     break;
                 }
-
                 lastMatches.clear();
                 lastMatches.addAll(currentMatches);
-
+                assert !currentMatches.contains(x);
             }
-            if(printDetail) log.info("final Satisfy + " + satisfy + xset);
-            if (satisfy == false) {
+//            log.info(x + " final Satisfy + " + satisfy);
+            if (!satisfy) {
                 continue;
-            } else {
-                xset.add(x);
             }
-            //log.info("after final Satisfy + " + xset);
-
+            xset.add(x);
         }
-        if(printDetail) log.debug("xset: " + xset + " length:" + xset.toArray().length);
         log.debug("pID=" + pattern.getPatternID() + " matchR using "
                 + (System.currentTimeMillis() - start) + "ms.");
-        log.debug(pattern.getXCandidates() + " and " + xset);
         pattern.getXCandidates().and(xset);
         pattern.newlyMatchXCount = xset.toArray().length; // DONE for update xcount
-
         return xset.toArray().length;
     }
 
     public int matchQ(Pattern pattern) {
-
         long start = System.currentTimeMillis();
-
         RoaringBitmap xset = new RoaringBitmap();
-
         /** Map storing edges to be mapping. HopFromX -> Edges */
-        HashMap<Integer, HashSet<DefaultEdge>> oMappingEdges = new HashMap<Integer, HashSet<DefaultEdge>>();
-
-        for (DefaultEdge e : pattern.getQ().edgeSet()) {
-
+        HashMap<Integer, HashSet<DefaultWeightedEdge>> oMappingEdges = new HashMap<Integer, HashSet<DefaultWeightedEdge>>();
+        for (DefaultWeightedEdge e : pattern.getQ().edgeSet()) {
             /**********************
              * Different with MatchR Begin
              ************************/
@@ -315,17 +298,12 @@ public class Partition extends Graph implements Serializable {
             /**********************
              * Different with MatchR End
              **************************/
-
-            else {
-
-                int hop = pattern.getQ().getEdgeTarget(e).hop;
-                if (!oMappingEdges.containsKey(hop)) {
-                    oMappingEdges.put(hop, new HashSet<DefaultEdge>());
-                }
-                oMappingEdges.get(hop).add(e);
+            int hop = pattern.getQ().getEdgeTarget(e).hop;
+            if (!oMappingEdges.containsKey(hop)) {
+                oMappingEdges.put(hop, new HashSet<DefaultWeightedEdge>());
             }
+            oMappingEdges.get(hop).add(e);
         }
-//        log.info("matchQ   pattern.getXNotYCandidates().toArray().length " + pattern.getXNotYCandidates().toArray().length + "\n");
 
         /**********************
          * Different with MatchR Begin
@@ -333,65 +311,53 @@ public class Partition extends Graph implements Serializable {
         if (oMappingEdges.size() == 0) {
             return pattern.getXNotYCandidates().toArray().length;
         }
-
         for (int x : pattern.getXNotYCandidates().toArray()) {
             /********************** Different with MatchR End **********************/
-
             boolean satisfy = true;
-
             /** Map storing edges to be mapping. PatternNodeID -> GraphNodeID */
             HashSet<Integer> lastMatches = new HashSet<Integer>();
             lastMatches.add(x);
-
+            boolean startForFlag = false;
             for (int i = 1; i <= KV.PARAMETER_B; i++) {
-
-                // System.out.println("hop = " + i);
                 if (!oMappingEdges.containsKey(i)) {
-                    // System.out.println("checked all");
+                    if (!startForFlag) { // TODO check whether reliable by wkx at 19/4/9
+                        satisfy = false;
+                    }
                     break;
                 }
-
+                startForFlag = true;
                 HashSet<Integer> currentMatches = new HashSet<Integer>();
-                for (DefaultEdge e : oMappingEdges.get(i)) {
+                for (DefaultWeightedEdge e : oMappingEdges.get(i)) {
                     boolean edgeSatisfy = false;
                     for (int lmatch : lastMatches) {
-
                         if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
-
                             for (Node n : this.GetChildren(this.FindNode(lmatch))) {
-
-                                if (n.GetAttribute() == pattern.getQ().getEdgeTarget(e).attribute) {
-
+                                if (((Integer) getEdgeWeight(this.FindNode(lmatch), n)) == (int) pattern.getQ().getEdgeWeight(e)) {
+//                                    log.info("this is matching Q");
                                     currentMatches.add(n.GetID());
                                     edgeSatisfy = true;
                                 }
                             }
                         }
                     }
-                    if (edgeSatisfy == false) {
+                    if (!edgeSatisfy) {
                         satisfy = false;
                     }
                 }
-
-                if (satisfy == false) {
+                if (!satisfy) {
                     break;
                 }
-
                 lastMatches.clear();
                 lastMatches.addAll(currentMatches);
+                assert !currentMatches.contains(x);
             }
-
-            if (satisfy == false) {
+            if (!satisfy) {
                 continue;
-            } else {
-                xset.add(x);
             }
-
+            xset.add(x);
         }
-
         log.debug("pID=" + pattern.getPatternID() + " matchQ using "
                 + (System.currentTimeMillis() - start) + "ms.");
-
         /**********************
          * Different with MatchR Begin
          ************************/
@@ -400,8 +366,6 @@ public class Partition extends Graph implements Serializable {
         /**********************
          * Different with MatchR End
          ************************/
-
-
         return xset.toArray().length;
     }
 
@@ -479,7 +443,7 @@ public class Partition extends Graph implements Serializable {
         // For MatchR and MatchQ Test.
 
         Pattern p = new Pattern(0);
-        p.initialXYEdge(1, 2050041);
+        p.initialXYEdge(1, 2050041, 2050041);
 
         System.out.println(p.toString());
         // // p.expend1Node1EdgeAsChildFromFixedNode(0, 2430010);

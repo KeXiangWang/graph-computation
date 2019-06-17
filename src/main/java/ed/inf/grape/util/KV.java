@@ -1,5 +1,7 @@
 package ed.inf.grape.util;
 
+import ed.inf.grape.graph.Edge;
+
 public class KV {
 
 	/** coordinator service name */
@@ -34,6 +36,7 @@ public class KV {
 	public static int QUERY_X_LABEL;
 	public static int QUERY_X_FILTER;
 	public static int QUERY_Y_LABEL;
+	public static int EDGE_X_Y_ATTRIBUTE;
 
 	public static int PERSON_LABEL;
 	public static int EXPEND_WIDTH;
@@ -73,6 +76,8 @@ public class KV {
 			QUERY_X_FILTER = Config.getInstance().getIntProperty("QUERY_X_FILTER");
 
 			QUERY_Y_LABEL = Config.getInstance().getIntProperty("QUERY_Y_LABEL");
+
+			EDGE_X_Y_ATTRIBUTE = Config.getInstance().getIntProperty("EDGE_X_Y_ATTRIBUTE");
 
 			PERSON_LABEL = Config.getInstance().getIntProperty("PERSON_LABEL");
 

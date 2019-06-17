@@ -18,6 +18,7 @@ import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DefaultWeightedEdge;
 
 import ed.inf.discovery.Pattern;
 import ed.inf.discovery.auxiliary.SimpleNode;
@@ -155,8 +156,7 @@ public class IO {
 
 		while (sc.hasNextInt()) {
 			int value = sc.nextInt();
-			log.info(value + "-------------------");
-			System.out.println();
+//			log.info(value + "-------------------");
 			retSet.add(value);
 		}
 
@@ -249,7 +249,7 @@ public class IO {
 			for (SimpleNode v : p.getQ().vertexSet()) {
 				StringBuffer sb = new StringBuffer();
 				sb.append(v.nodeID).append("\t").append(v.attribute);
-				for (DefaultEdge e : p.getQ().outgoingEdgesOf(v)) {
+				for (DefaultWeightedEdge e : p.getQ().outgoingEdgesOf(v)) {
 					sb.append("\t").append(p.getQ().getEdgeTarget(e).nodeID);
 				}
 				writer.println(sb);
