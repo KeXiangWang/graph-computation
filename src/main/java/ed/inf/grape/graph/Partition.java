@@ -246,7 +246,7 @@ public class Partition extends Graph implements Serializable {
                     boolean edgeSatisfy = false;
 //                    log.debug("Matching edge: " + e);
                     for (int lmatch : lastMatches) {
-                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
+//                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
                             for (Node n : this.GetChildren(this.FindNode(lmatch))) {
                                 if (((Integer) getEdgeWeight(this.FindNode(lmatch), n)) == (int) pattern.getQ().getEdgeWeight(e)) {
 //                                    log.debug("Match successfully match nodeID:" + n.GetID() + " attr: "
@@ -256,7 +256,7 @@ public class Partition extends Graph implements Serializable {
                                     edgeSatisfy = true;
                                 }
                             }
-                        }
+//                        }
                     }
                     if (!edgeSatisfy) {
                         satisfy = false;
@@ -325,20 +325,22 @@ public class Partition extends Graph implements Serializable {
                     }
                     break;
                 }
+                int ok;
                 startForFlag = true;
                 HashSet<Integer> currentMatches = new HashSet<Integer>();
                 for (DefaultWeightedEdge e : oMappingEdges.get(i)) {
                     boolean edgeSatisfy = false;
                     for (int lmatch : lastMatches) {
-                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
+//                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
                             for (Node n : this.GetChildren(this.FindNode(lmatch))) {
                                 if (((Integer) getEdgeWeight(this.FindNode(lmatch), n)) == (int) pattern.getQ().getEdgeWeight(e)) {
 //                                    log.info("this is matching Q");
+                                    int jk;
                                     currentMatches.add(n.GetID());
                                     edgeSatisfy = true;
                                 }
                             }
-                        }
+//                        }
                     }
                     if (!edgeSatisfy) {
                         satisfy = false;
