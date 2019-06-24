@@ -258,7 +258,7 @@ public class DiscoveryTask {
             for (SimpleNode n : p.getQ().vertexSet()) {
                 ///if (n.hop == radiu && n.attribute == KV.PERSON_LABEL) {
                 /// 2019.3.31 commented by kexiang
-                if (n.hop == radiu) {
+                if (n.hop == radiu && (int)n.attribute != KV.QUERY_Y_LABEL) {
                     List<Pattern> newGensPatterns = new LinkedList<Pattern>();
 
                     for (int attr : partition.getFreqEdgeLabels()) {

@@ -569,8 +569,8 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
 
         for (Iterator<Pattern> iterator = this.deltaE.iterator(); iterator.hasNext(); ) {
             Pattern p = iterator.next();
-            log.debug("supportfilter:" + p.newlyMatchXCount + ", t="
-                    + KV.PARAMETER_ETA);
+            log.debug("PatternID:" + p.getPatternID() + " supportfilter:" + p.newlyMatchXCount +", t="
+                    + KV.PARAMETER_ETA + " XCan："+p.getXCandidates().toArray().length);
             if (p.getXCandidates().toArray().length < KV.PARAMETER_ETA) { // TODO check this, issued by WKX on 4/9
                 iterator.remove();
 //			if (p.newlyMatchXCount < KV.PARAMETER_ETA) { // DONE for use new xcount to flit
