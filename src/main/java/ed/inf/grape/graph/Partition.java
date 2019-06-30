@@ -1,13 +1,9 @@
 package ed.inf.grape.graph;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 
+import ed.inf.discovery.auxiliary.SimpleNode;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -49,6 +45,7 @@ public class Partition extends Graph implements Serializable {
 
     private int YCount = 0;
     private int notYCount = 0;
+    private double coff = 0.0;
 
     private Set<Integer> freqEdgeLabels;
 
@@ -61,6 +58,16 @@ public class Partition extends Graph implements Serializable {
     /**
      * Statistics of current partition
      */
+    public void initCoff(Pattern initPattern) {
+        this.matchR(initPattern);
+        this.matchQ(initPattern);
+        this.coff = initPattern.getNotYCount() * 1.0 / initPattern.getYCount();
+        double confidence = initPattern.getXCandidates().toArray().length * coff
+                / initPattern.getXNotYCandidates().toArray().length;
+        initPattern.setConfidence(confidence);
+        log.info("init coff: " + coff + ", NotYCount:" + initPattern.getNotYCount() + ", YCount:" + initPattern.getYCount());
+
+    }
 
     static Logger log = LogManager.getLogger(Partition.class);
 
@@ -204,6 +211,140 @@ public class Partition extends Graph implements Serializable {
         return false;
     }
 
+    public void preMatchR(Pattern pattern, PriorityQueue<Pattern> topNPatterns, int superstep) {
+        /** using x->y */
+        long start = System.currentTimeMillis();
+//        RoaringBitmap xset = new RoaringBitmap();
+        /** Map storing edges to be mapping. HopFromX -> Edges */
+        HashMap<Integer, HashSet<DefaultWeightedEdge>> oMappingEdges = new HashMap<>();
+        DefaultWeightedEdge wildCard = null;
+        for (DefaultWeightedEdge e : pattern.getQ().edgeSet()) {
+            int hop = pattern.getQ().getEdgeTarget(e).hop;
+            if (!oMappingEdges.containsKey(hop)) {
+                oMappingEdges.put(hop, new HashSet<DefaultWeightedEdge>());
+            }
+            oMappingEdges.get(hop).add(e);
+            if ((int) pattern.getQ().getEdgeWeight(e) == -1) {
+                wildCard = e;
+            }
+        }
+        Map<Integer, Double> labelMap = new HashMap<>();
+
+        for (int x : pattern.getXCandidates().toArray()) {
+//            log.debug("current dealing x= " + x);
+            boolean satisfy = true;
+            /** Map storing edges to be mapping. PatternNodeID -> GraphNodeID **/
+            HashSet<Integer> lastMatches = new HashSet<>();
+            lastMatches.add(x);
+            Map<Integer, Double> labelMapLocal = new HashMap<>();
+            boolean startForFlag = false; // DONE ADD a FLAG FOR JUDGE WHETHER it HAD GOTTEN IN FOR LOOP by wkx at 4/7 15:50
+            for (int i = 1; i <= KV.PARAMETER_B; i++) {
+                if (!oMappingEdges.containsKey(i)) {
+                    if (!startForFlag) {
+                        satisfy = false;
+                    }
+                    break;
+                }
+                startForFlag = true;
+                HashSet<Integer> currentMatches = new HashSet<>();
+                for (DefaultWeightedEdge e : oMappingEdges.get(i)) {
+                    boolean edgeSatisfy = false;
+                    if ((int) pattern.getQ().getEdgeWeight(e) == -1) {
+
+                        for (int lmatch : lastMatches) {
+                            if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
+                                for (Node n : this.GetChildren(this.FindNode(lmatch))) {
+                                    if (!labelMapLocal.containsKey(n.GetAttribute())) {
+                                        labelMapLocal.put(n.GetAttribute(), ((Integer) getEdgeWeight(this.FindNode(lmatch), n)).doubleValue());
+                                    }
+                                }
+                            }
+                        }
+                        edgeSatisfy = true;
+                    } else {
+                        for (int lmatch : lastMatches) {
+                            if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
+                                for (Node n : this.GetChildren(this.FindNode(lmatch))) {
+                                    if (((Integer) getEdgeWeight(this.FindNode(lmatch), n)) == (int) pattern.getQ().getEdgeWeight(e)) {
+//                                    log.debug("Match successfully match nodeID:" + n.GetID() + " attr: "
+//                                            + n.GetAttribute() + " \nweight:" + getEdgeWeight(this.FindNode(lmatch), n)
+//                                            + " matched weight:" + pattern.getQ().getEdgeWeight(e));
+                                        currentMatches.add(n.GetID());
+                                        edgeSatisfy = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+//                    log.info("too early to assert");
+//                    assert false;
+                    if (!edgeSatisfy) {
+                        satisfy = false;
+                        break;
+                    }
+                }
+                if (!satisfy) {
+                    break;
+                }
+                lastMatches.clear();
+                lastMatches.addAll(currentMatches);
+                assert !currentMatches.contains(x);
+            }
+            if (!satisfy) {
+                continue;
+            }
+            labelMap.putAll(labelMapLocal);
+//            xset.add(x);
+//            log.info("here");
+        }
+
+        log.info("labelMap:\n\n" + labelMap + "\n\n");
+        SimpleNode simpleNode = pattern.getQ().getEdgeSource(wildCard);
+        pattern.getQ().removeVertex(pattern.getQ().getEdgeTarget(wildCard));
+        pattern.getQ().removeEdge(wildCard);
+        for (Integer nodeAttr : labelMap.keySet()) {
+            Pattern newPattern = new Pattern(pattern.getPartitionID(), pattern, true);
+            newPattern.expendLabeledNodeFromFixedNodeWithEdgeLabel(
+                    simpleNode.nodeID, nodeAttr, labelMap.get(nodeAttr));
+//            log.info("pattern  origin: " + pattern);
+//            log.info("newPattern made: " + newPattern);
+//            assert false;
+//            log.debug("before npID = " + newPattern.getPatternID() + ", np.xcan = "
+//                    + newPattern.getXCandidates().toArray().length + ", np.xnotycan = "
+//                    + newPattern.getXNotYCandidates().toArray().length);
+//            assert false;
+            this.matchR(newPattern);
+
+//            log.debug("after npID = " + newPattern.getPatternID() + ", np.xcan = "
+//                    + newPattern.getXCandidates().toArray().length + ", np.xnotycan = "
+//                    + newPattern.getXNotYCandidates().toArray().length);
+//            double confidence = newPattern.getXCandidates().toArray().length * coff
+//                    / newPattern.getXNotYCandidates().toArray().length;
+//            newPattern.setConfidence(confidence);
+            if (topNPatterns.size() < KV.PARAMETER_N) {
+                topNPatterns.add(newPattern);
+            } else {
+                if (topNPatterns.peek() != null && topNPatterns.peek().getXCandidates().toArray().length
+                        < newPattern.getXCandidates().toArray().length) {
+                    this.matchQ(newPattern);
+                    topNPatterns.poll();
+                    topNPatterns.add(newPattern);
+                    int supportForNextHop = 0;
+                    for (int xcan : newPattern.getXCandidates()) {
+                        if (this.isExtendibleAtR(xcan, superstep + 1)) {
+                            supportForNextHop++;
+                        }
+                    }
+                    newPattern.setSupportUB(supportForNextHop);
+                }
+            }
+//            log.info("topNPatterns.size(): " + topNPatterns.size());
+            assert topNPatterns.size() <= KV.PARAMETER_N;
+        }
+//        assert  false;
+    }
+
     public int matchR(Pattern pattern) {
         /** using x->y */
         // FIXME: not sure works correct.
@@ -220,8 +361,8 @@ public class Partition extends Graph implements Serializable {
             }
             oMappingEdges.get(hop).add(e);
         }
-        log.debug("oMappingEdges - \n" + oMappingEdges);
-        log.debug("matching pattern: \n" + pattern);
+//        log.debug("oMappingEdges - \n" + oMappingEdges);
+//        log.debug("matching pattern: \n" + pattern);
         for (int x : pattern.getXCandidates().toArray()) {
 //            log.debug("current dealing x= " + x);
 //             HashMap<Integer, HashSet<DefaultEdge>> mappingEdges =
@@ -246,7 +387,7 @@ public class Partition extends Graph implements Serializable {
                     boolean edgeSatisfy = false;
 //                    log.debug("Matching edge: " + e);
                     for (int lmatch : lastMatches) {
-//                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
+                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
                             for (Node n : this.GetChildren(this.FindNode(lmatch))) {
                                 if (((Integer) getEdgeWeight(this.FindNode(lmatch), n)) == (int) pattern.getQ().getEdgeWeight(e)) {
 //                                    log.debug("Match successfully match nodeID:" + n.GetID() + " attr: "
@@ -256,7 +397,7 @@ public class Partition extends Graph implements Serializable {
                                     edgeSatisfy = true;
                                 }
                             }
-//                        }
+                        }
                     }
                     if (!edgeSatisfy) {
                         satisfy = false;
@@ -280,6 +421,7 @@ public class Partition extends Graph implements Serializable {
         pattern.getXCandidates().and(xset);
         pattern.newlyMatchXCount = xset.toArray().length; // DONE for update xcount
         return xset.toArray().length;
+
     }
 
     public int matchQ(Pattern pattern) {
@@ -331,16 +473,15 @@ public class Partition extends Graph implements Serializable {
                 for (DefaultWeightedEdge e : oMappingEdges.get(i)) {
                     boolean edgeSatisfy = false;
                     for (int lmatch : lastMatches) {
-//                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
+                        if (this.FindNode(lmatch).GetAttribute() == pattern.getQ().getEdgeSource(e).attribute) {
                             for (Node n : this.GetChildren(this.FindNode(lmatch))) {
                                 if (((Integer) getEdgeWeight(this.FindNode(lmatch), n)) == (int) pattern.getQ().getEdgeWeight(e)) {
-//                                    log.info("this is matching Q");
                                     int jk;
                                     currentMatches.add(n.GetID());
                                     edgeSatisfy = true;
                                 }
                             }
-//                        }
+                        }
                     }
                     if (!edgeSatisfy) {
                         satisfy = false;

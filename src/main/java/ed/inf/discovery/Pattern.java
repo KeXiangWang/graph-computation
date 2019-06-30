@@ -269,6 +269,32 @@ public class Pattern implements Serializable {
         }
     }
 
+    public void expendWildFromFixedNode(int fromNodeID) {
+        int toNodeAttr = -1;
+        double edgeAttr = -1;
+        for (SimpleNode fromNode : this.Q.vertexSet()) {
+            if (fromNode.nodeID == fromNodeID) {
+                SimpleNode attrNode = new SimpleNode(this.nextNodeID(), toNodeAttr, fromNode.hop + 1);
+                this.Q.addVertex(attrNode);
+                DefaultWeightedEdge DefaultWeightedEdge = this.Q.addEdge(fromNode, attrNode);
+                this.Q.setEdgeWeight(DefaultWeightedEdge, edgeAttr);
+                return;
+            }
+        }
+    }
+    public void expendLabeledNodeFromFixedNodeWithEdgeLabel(int fromNodeID, int toNodeLabel, double edgeLabel) {
+        for (SimpleNode fromNode : this.Q.vertexSet()) {
+            if (fromNode.nodeID == fromNodeID) {
+                SimpleNode attrNode = new SimpleNode(this.nextNodeID(), toNodeLabel, fromNode.hop + 1);
+                this.Q.addVertex(attrNode);
+                DefaultWeightedEdge DefaultWeightedEdge = this.Q.addEdge(fromNode, attrNode);
+                this.Q.setEdgeWeight(DefaultWeightedEdge, edgeLabel);
+                return;
+            }
+        }
+    }
+
+
     public boolean expendEdgeFromNodeToNode(int fromNodeID, int toNodeID) {
 
         SimpleNode fnode = null, tnode = null;
@@ -386,9 +412,21 @@ public class Pattern implements Serializable {
 
     @Override
     public String toString() {
-        return "Pattern [patternID=" + patternID + ", originID=" + originID + ", partitionID="
-                + partitionID + ", \nQ=" + Q + ", \nx=" + x + ", \ny=" + y + ", \ndiameter="
-                + getDiameter() + "]";
+        String text = "Pattern [patternID=" + patternID + ", originID=" + originID + ", partitionID="
+                + partitionID + ", \nQ=[\nNodes: [";
+        for (SimpleNode node : this.Q.vertexSet()) {
+            text = text.concat("[NodeID:" + node.nodeID + ", a=" + node.attribute + ", h=" + node.hop + "], ");
+        }
+        text = text + "],\nEdge: [\n";
+        for (DefaultWeightedEdge edge : this.Q.edgeSet()) {
+            text = text.concat("[[NodeID:" + this.Q.getEdgeSource(edge).nodeID + ", a=" + this.Q.getEdgeSource(edge).attribute
+                    + "] " + "-->" + " [NodeID:" + this.Q.getEdgeTarget(edge).nodeID + ", a=" + this.Q.getEdgeTarget(edge).attribute
+                    + "] " + "Weight:" + this.Q.getEdgeWeight(edge) + "]\n");
+        }
+        text = text.concat("]],");
+        text = text.concat("\nx=" + x + ", \ny=" + y + ", \ndiameter="
+                + getDiameter() + "]");
+        return text;
     }
 
     public Graph toPGraph() {

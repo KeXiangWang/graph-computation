@@ -118,7 +118,7 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
      * Instantiates a new coordinator.
      *
      * @throws RemoteException           the remote exception
-     * @throws PropertyNotFoundException the property not found exception
+//     * @throws PropertyNotFoundException the property not found exception
      */
     public Coordinator() throws RemoteException {
         super();
@@ -569,7 +569,7 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
 
         for (Iterator<Pattern> iterator = this.deltaE.iterator(); iterator.hasNext(); ) {
             Pattern p = iterator.next();
-            log.debug("PatternID:" + p.getPatternID() + " supportfilter:" + p.newlyMatchXCount +", t="
+            log.debug("PatternID:" + p.getPatternID() + " supportfilter:" + p.newlyMatchXCount +", ETA="
                     + KV.PARAMETER_ETA + " XCan："+p.getXCandidates().toArray().length);
             if (p.getXCandidates().toArray().length < KV.PARAMETER_ETA) { // TODO check this, issued by WKX on 4/9
                 iterator.remove();
@@ -695,7 +695,6 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
     @Override
     public void postProcess() throws RemoteException {
         // TODO Auto-generated method stub
-
     }
 
     @Override

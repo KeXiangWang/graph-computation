@@ -68,9 +68,8 @@ public class Edge implements Serializable {
         this.tlink = tlink;
     }
 
-    // ��֤��equals��������ȷ��
     public boolean equals(Object other) {
-        if (this == other) // �ȼ���Ƿ����Է��ԣ���Ƚ�other�Ƿ�Ϊ�ա�����Ч�ʸ�
+        if (this == other)
             return true;
         if (other == null)
             return false;
