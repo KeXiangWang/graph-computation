@@ -29,17 +29,10 @@ import ed.inf.grape.util.KV;
 public class Partition extends Graph implements Serializable {
 
     private static final long serialVersionUID = -4757004627010733180L;
-
     private int partitionID;
     private boolean printDetail = false;
 
-
-    /**
-     * Node set in BF functions
-     */
-
     private RoaringBitmap X;
-
     private RoaringBitmap XY;
     private RoaringBitmap XNotY;
 

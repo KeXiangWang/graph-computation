@@ -106,7 +106,7 @@ public class DiscoveryTask {
             }
         };
         PriorityQueue<Pattern> topNPatterns = new PriorityQueue<>(cmp);
-        topNPatterns.addAll(messages);
+//        topNPatterns.addAll(messages);
         for (Pattern baseMessage : messages) {
             i++;
             log.debug("Currently in step " + this.superstep + " expanded " + i + "/"

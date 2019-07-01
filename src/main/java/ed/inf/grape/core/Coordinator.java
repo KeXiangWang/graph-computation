@@ -117,8 +117,8 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
     /**
      * Instantiates a new coordinator.
      *
-     * @throws RemoteException           the remote exception
-//     * @throws PropertyNotFoundException the property not found exception
+     * @throws RemoteException the remote exception
+     *                         //     * @throws PropertyNotFoundException the property not found exception
      */
     public Coordinator() throws RemoteException {
         super();
@@ -211,6 +211,7 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
             String resultFolder = (new SimpleDateFormat("yyyyMMdd-hh-mm-ss")).format(new Date());
             KV.RESULT_DIR = KV.OUTPUT_DIR + resultFolder;
             (new File(KV.RESULT_DIR)).mkdir();
+            (new File(KV.RESULT_DIR+"/summary")).mkdir();
             System.out.println(KV.ENABLE_OPT);
             log.info("Coordinator instance is bound to " + KV.RMI_PORT + " and ready.");
         } catch (RemoteException e) {
@@ -569,8 +570,8 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
 
         for (Iterator<Pattern> iterator = this.deltaE.iterator(); iterator.hasNext(); ) {
             Pattern p = iterator.next();
-            log.debug("PatternID:" + p.getPatternID() + " supportfilter:" + p.newlyMatchXCount +", ETA="
-                    + KV.PARAMETER_ETA + " XCan："+p.getXCandidates().toArray().length);
+            log.debug("PatternID:" + p.getPatternID() + " supportfilter:" + p.newlyMatchXCount + ", ETA="
+                    + KV.PARAMETER_ETA + " XCan：" + p.getXCandidates().toArray().length);
             if (p.getXCandidates().toArray().length < KV.PARAMETER_ETA) { // TODO check this, issued by WKX on 4/9
                 iterator.remove();
 //			if (p.newlyMatchXCount < KV.PARAMETER_ETA) { // DONE for use new xcount to flit
@@ -657,6 +658,7 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
 
                 // workers didn't expanded anything.
                 this.writeTopKToFile();
+                this.writeTopKToVEFile();
                 this.finishDiscovery();
             } else {
 
@@ -664,7 +666,7 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
                 this.assembleMessages();
                 this.generateTopK();
                 this.writeTopKToFile();
-
+                this.writeTopKToVEFile();
                 // for next expand.
 
                 this.prepareForNextStep();
@@ -715,7 +717,7 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
 
     public void writeTopKToFile() {
 
-        String resultFile = KV.RESULT_DIR + "/" + this.superstep + ".dat";
+        String resultFile = KV.RESULT_DIR + "/summary/" + this.superstep + ".dat";
 
         PrintWriter writer;
         try {
@@ -764,6 +766,77 @@ public class Coordinator extends UnicastRemoteObject implements Worker2Coordinat
                 }
             }
             writer.close();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void writeTopKToVEFile() {
+        String directory = KV.RESULT_DIR + "/";
+        String dataFileName = "r" + this.superstep + ".dat";
+
+        PrintWriter writer;
+        try {
+
+            writer = new PrintWriter(directory + dataFileName);
+            if (this.listK.size() != 0) {
+                writer.println("\"sigma size\" : \"" + Sigma.size() + "\",");
+                writer.println("\"Using time\" : \"" + (System.currentTimeMillis() - startTime) * 1.0 / 1000 + "s\",");
+                writer.println("\"opt\" : \"" + KV.ENABLE_OPT + "\",");
+                writer.println("\"fragment\" : \"" + this.workerMap.size() + "\",");
+                writer.println("\"round\" : \"" + this.superstep + "\",");
+                writer.println("\"bf\" : \"" + Compute.computeBF(this.listK) + "\",");
+                writer.close();
+
+                String eFileName;
+                String vFileName;
+                PrintWriter writerE;
+                PrintWriter writerV;
+
+                int i = 0;
+                for (PatternPair pr : this.listK) {
+                    eFileName = "r" + this.superstep + "_p" + i + "_0.e";
+                    vFileName = "r" + this.superstep + "_p" + i + "_0.v";
+                    writerE = new PrintWriter(directory + eFileName);
+                    writerV = new PrintWriter(directory + vFileName);
+                    for (SimpleNode _v : pr.getP1().getQ().vertexSet()) {
+                        StringBuffer _s = new StringBuffer();
+                        _s.append(_v.nodeID).append("\t").append(_v.attribute);
+                        writerV.println(_s);
+                    }
+                    for (DefaultWeightedEdge e : pr.getP1().getQ().edgeSet()) {
+                        Integer sourceID = pr.getP1().getQ().getEdgeSource(e).nodeID;
+                        Integer targetID = pr.getP1().getQ().getEdgeTarget(e).nodeID;
+                        double edgeLabel = pr.getP1().getQ().getEdgeWeight(e);
+                        StringBuffer _s = new StringBuffer();
+                        _s.append(sourceID).append("\t").append(targetID).append("\t").append((int) edgeLabel);
+                        writerE.println(_s);
+                    }
+                    writerV.close();
+                    writerE.close();
+                    eFileName = "r" + this.superstep + "_p" + i + "_1.e";
+                    vFileName = "r" + this.superstep + "_p" + i + "_1.v";
+                    writerE = new PrintWriter(directory + eFileName);
+                    writerV = new PrintWriter(directory + vFileName);
+                    for (SimpleNode _v : pr.getP2().getQ().vertexSet()) {
+                        StringBuffer _s = new StringBuffer();
+                        _s.append(_v.nodeID).append("\t").append(_v.attribute);
+                        writerV.println(_s);
+                    }
+                    for (DefaultWeightedEdge e : pr.getP2().getQ().edgeSet()) {
+                        Integer sourceID = pr.getP2().getQ().getEdgeSource(e).nodeID;
+                        Integer targetID = pr.getP2().getQ().getEdgeTarget(e).nodeID;
+                        double edgeLabel = pr.getP2().getQ().getEdgeWeight(e);
+                        StringBuffer _s = new StringBuffer();
+                        _s.append(sourceID).append("\t").append(targetID).append("\t").append((int) edgeLabel);
+                        writerE.println(_s);
+                    }
+                    writerV.close();
+                    writerE.close();
+                    i++;
+                }
+            }
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
